@@ -1,0 +1,285 @@
+\documentclass[11pt, a4paper]{article}
+
+% --- BLOQUE DE ESTÉTICA Y DISEÑO PROFESIONAL ---
+\usepackage[a4paper, top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
+\usepackage{fontspec}
+\usepackage[spanish, bidi=basic, provide=*]{babel}
+\usepackage{xcolor}
+\usepackage{colortbl} 
+\usepackage{pagecolor} 
+\usepackage[hidelinks]{hyperref} 
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{titlesec} 
+\usepackage{fancyhdr}
+
+% Paleta de colores "BeCall Tech"
+\definecolor{mainbg}{HTML}{0F172A}      
+\definecolor{sidebg}{HTML}{1E293B}      
+\definecolor{vmwareblue}{HTML}{0078D4}  
+\definecolor{proxmoxorange}{HTML}{FF6600}
+\definecolor{textwhite}{HTML}{F1F5F9}   
+\definecolor{textgray}{HTML}{94A3B8}    
+
+\babelprovide[import, onchar=ids fonts]{spanish}
+\babelprovide[import, onchar=ids fonts]{english}
+
+% --- CONFIGURACIÓN DE FUENTES ---
+% IMPORTANTE: Seleccionar LuaLaTeX en el menú Compiler de Overleaf
+\babelfont{rm}{Noto Sans}
+
+% Comando de seguridad para gestión de imágenes
+\newcommand{\safeincludegraphics}[2][]{%
+  \IfFileExists{#2}{%
+    \includegraphics[#1]{#2}%
+  }{%
+    \framebox{\parbox{\dimexpr\textwidth-2\fboxsep-2\fboxrule\relax}{\centering \vspace{1.5cm} \color{textgray} \textbf{[Captura de Pantalla: #2]} \\ \small (Pendiente de vincular en Overleaf) \vspace{1.5cm}}}%
+  }%
+}
+
+\setlength{\headheight}{22pt}
+\addtolength{\topmargin}{-10pt}
+
+\pagecolor{mainbg}
+\color{textwhite}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=proxmoxorange,
+    urlcolor=vmwareblue
+}
+
+% Formato de Títulos
+\titleformat{\section}{\normalfont\Large\bfseries\color{proxmoxorange}}{\thesection}{1em}{}[\color{vmwareblue}\titlerule]
+\titleformat{\subsection}{\normalfont\large\bfseries\color{vmwareblue}}{\thesubsection}{1em}{}
+
+% Estilo de Terminal de Comandos
+\lstset{
+    backgroundcolor=\color{sidebg},
+    basicstyle=\ttfamily\small\color{textwhite},
+    breaklines=true,
+    frame=leftline,
+    framerule=3pt,
+    rulecolor=\color{vmwareblue},
+    numbers=left,
+    numberstyle=\tiny\color{textgray},
+    captionpos=b,
+    keywordstyle=\color{proxmoxorange}\bfseries,
+    commentstyle=\color{textgray}\itshape,
+    showstringspaces=false,
+    xleftmargin=20pt 
+}
+
+% Cabecera y Pie de página
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\footnotesize \color{textgray} Informe de Migración: VMware $\rightarrow$ Proxmox}
+\fancyhead[R]{\footnotesize \color{vmwareblue} Bruno Cuadras Canseco}
+\fancyfoot[C]{\color{textgray} Página \thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{vmwareblue}\leaders\hrule height \headrulewidth\hfill}}
+
+\begin{document}
+\raggedbottom
+
+% --- PORTADA ---
+\begin{titlepage}
+    \centering
+    \pagecolor{mainbg}
+    \vspace*{1.5cm}
+    {\Huge \textbf{\color{textwhite} Informe Técnico: Migración de Infraestructura Virtual}} \\
+    \vspace{0.8cm}
+    {\Large \textit{\color{textgray} De Entornos de Pruebas VMware a Despliegue Bare-Metal Proxmox}} \\
+    \vspace{1.5cm}
+    
+    {\centering
+    \safeincludegraphics[width=0.75\textwidth]{proxmoxf.png}\par}
+    
+    \vfill
+    \begin{minipage}{0.5\textwidth}
+        \begin{flushleft} \large
+            \textbf{\color{proxmoxorange} REALIZADO POR:}\\
+            \textbf{Bruno Cuadras Canseco}\\
+            \color{textgray} Técnico en prácticas (ASIR)\\
+        \end{flushleft}
+    \end{minipage}
+    \begin{minipage}{0.4\textwidth}
+        \begin{flushright} \large
+            \textbf{\color{vmwareblue} ORGANIZACIÓN:}\\
+            \textbf{BeCall Group León}\\
+            Departamento de IT\\
+            Marzo 2026
+        \end{flushright}
+    \end{minipage}
+    
+    \vspace{1.5cm}
+    {\color{textgray} \today}
+\end{titlepage}% <--- El parche del símbolo % evita la página en blanco
+\newpage
+
+% --- ÍNDICE ---
+{
+\hypersetup{linkcolor=proxmoxorange}
+\tableofcontents
+}
+\newpage
+
+% --- SECCIÓN 1: INTRODUCCIÓN ---
+\section{Introducción y Justificación}
+Este informe documenta el proceso técnico, los desafíos y las soluciones aplicadas durante la migración de una infraestructura de máquinas virtuales heterogénea. El proyecto consistió en trasladar activos desde un hipervisor de Tipo 2 (\textbf{VMware Workstation}) en una estación de trabajo, hacia un entorno de producción de Tipo 1 (\textbf{Proxmox VE 8.4}).
+
+Como técnico en prácticas de ASIR en \textbf{BeCall Group León}, este laboratorio ha sido una oportunidad para "bajar al barro" de la administración de sistemas. A mis 24 años, entiendo que la teoría es necesaria, pero la realidad de un administrador de sistemas Senior se forja resolviendo por qué una máquina de 29MB no arranca o por qué un disco de 12GB se queda "colgado" al 90\%. Este documento es el registro de esa curva de aprendizaje.
+
+\section{El Escenario del Laboratorio}
+
+\subsection{Hardware del Nodo (Servidor HP)}
+El despliegue se realizó sobre un servidor físico \textbf{HP} proporcionado por la empresa. Aunque el hardware es modesto, trabajar en un entorno Bare-Metal nos permite experimentar la potencia real de \textbf{KVM} y \textbf{QEMU}, eliminando la latencia que introduce un sistema operativo anfitrión.
+
+\subsection{Infraestructura de Red y Gestión}
+La estación de gestión utilizada corría bajo \textbf{Zorin OS}. Para la comunicación con el servidor HP, se empleó un router \textbf{TP-Link TL-WR840N}. A pesar de ser un equipo de 300Mbps de gama básica, fue el "corazón" de la red durante las transferencias de datos, demostrando que la estabilidad de los protocolos (\textbf{SCP/SSH}) es más crítica que el ancho de banda bruto en entornos de migración controlados.
+
+
+% --- SECCIÓN 3: CONFIGURACIÓN MAESTRA ---
+\section{Configuración Maestra de Hardware en Proxmox}
+Para que la migración fuera un éxito, no bastaba con importar los discos. Cada sistema operativo tiene sus propias necesidades de hardware virtualizado. A continuación, detallo la "receta" exacta aplicada a cada VM (de la 100 a la 105).
+
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.5}
+\begin{tabularx}{\textwidth}{|>{\columncolor{sidebg}\bfseries\color{textwhite}}l|X|X|X|X|}
+\hline
+\rowcolor{sidebg} \color{proxmoxorange} Parámetro & \color{textwhite} Ubuntu Desktop & \color{textwhite} Ubuntu Server & \color{textwhite} Windows 10 & \color{textwhite} TinyCore \\ \hline
+VM ID & 104 & 101 & 100 & 105 \\ \hline
+CPU Type & x86-64-v2-AES & Host & Host & Default \\ \hline
+RAM & 4 GiB & 2 GiB & 4 GiB & 4 GiB \\ \hline
+BIOS & OVMF (UEFI) & SeaBIOS & OVMF (UEFI) & SeaBIOS \\ \hline
+Display & VirtIO-GPU & Serial & VirtIO-GPU & Standard VGA \\ \hline
+SCSI Controller & VirtIO SCSI & VirtIO SCSI & VirtIO SCSI Single & LSI 53C895A \\ \hline
+Network & VirtIO (Bridged) & VirtIO (Bridged) & VirtIO (Bridged) & E1000 \\ \hline
+\end{tabularx}
+\caption{\color{textgray} Matriz de configuración de hardware virtualizado por sistema.}
+\end{table}
+
+\section{Metodología de Migración Paso a Paso}
+
+\subsection{Fase de Transporte: El protocolo SCP}
+El primer paso fue mover los archivos \texttt{.vmdk} de VMware desde Zorin OS hacia el directorio temporal de Proxmox (\texttt{/var/lib/vz/template/iso/}).
+
+\begin{figure}[htbp]
+  \centering
+  \safeincludegraphics[width=0.85\textwidth]{scpubusv.png}
+  \caption{\color{textgray} Monitorización de la transferencia de Ubuntu Server. La integridad del archivo es vital.}
+\end{figure}
+
+Fue en esta etapa donde experimentamos los primeros retos de red, ya que el router TP-Link debía gestionar flujos constantes de datos durante periodos prolongados, especialmente con la imagen de Windows 10.
+
+\begin{figure}[htbp]
+  \centering
+  \safeincludegraphics[width=0.85\textwidth]{scpw10.png}
+  \caption{\color{textgray} Transferencia masiva del activo Windows 10 (12 GB). Un proceso de paciencia y monitorización.}
+\end{figure}
+
+% --- SECCIÓN 5: ANÁLISIS DE SISTEMAS ---
+\section{Análisis de los Sistemas Migrados}
+
+\subsection{Windows 10: El reto de los Drivers VirtIO}
+Windows 10 fue el sistema más complejo de "inyectar". Por defecto, el instalador no reconoce el bus de Proxmox. 
+\begin{itemize}
+    \item \textbf{Doble Almacenamiento:} Montamos la ISO oficial y la ISO de \texttt{virtio-win}.
+    \item \textbf{Inyección:} Durante la instalación, cargamos manualmente el driver desde \texttt{amd64/w10}.
+    \item \textbf{Optimización:} Post-instalación, instalamos las \texttt{Guest Tools} para que Windows permitiera el apagado ordenado desde Proxmox.
+\end{itemize}
+
+\subsection{Ubuntu Server: Automatización con Cloud-Init}
+Con Ubuntu Server, aprendí a usar \textbf{Cloud-Init}. En lugar de entrar en la consola para configurar la red, definimos la IP estática directamente desde la interfaz de Proxmox. Al arrancar, el sistema ya estaba en red y listo para recibir conexiones SSH.
+
+\subsection{Ubuntu Desktop: Fluidez Visual y el Ratón}
+En la versión Desktop, nos encontramos con un cursor que no coincidía con el puntero real. La solución fue activar el dispositivo \textbf{Tablet USB}. Además, el cambio a \textbf{VirtIO-GPU} fue notable: la interfaz pasó de ser pesada a responder de forma casi nativa.
+
+\begin{figure}[htbp]
+  \centering
+  \safeincludegraphics[width=0.9\textwidth]{ubuntuya.png}
+  \caption{\color{textgray} Ubuntu Desktop operativo tras ajustar el driver de video y la aceleración.}
+\end{figure}
+
+\subsection{TinyCore: El Rompecabezas de la Persistencia}
+TinyCore (VM 105) demostró que el tamaño no define la dificultad. Siendo la más pequeña (29MB), fue la más caprichosa.
+\begin{enumerate}
+    \item \textbf{Re-mapeo:} El disco importado se puso en \textbf{Bus SATA 0} para que el kernel lo reconociera.
+    \item \textbf{Persistencia:} Montamos manualmente \texttt{/dev/sda1} para que los paquetes instalados no desaparecieran al reiniciar.
+    \item \textbf{Gráficos:} Configuramos el escritorio mediante \texttt{xsetup} para asegurar una resolución estable de 800x600 compatible con la consola Proxmox.
+\end{enumerate}
+
+\newpage
+
+% --- SECCIÓN 6: COMANDOS Y TROUBLESHOOTING ---
+\section{Bitácora de Comandos de Bajo Nivel}
+Como administradores, la terminal es nuestra herramienta principal. Estos son los comandos clave que ejecuté en la Shell de Proxmox para gestionar las máquinas:
+
+\begin{lstlisting}[language=bash, caption=Comandos senior para la gestion de VMs]
+# 1. Importar el disco de TinyCore convirtiendolo al pool local-lvm
+qm importdisk 105 /var/lib/vz/template/iso/TinyCore-disk1.vmdk local-lvm
+
+# 2. Configurar el orden de arranque para que use el disco SATA recien importado
+qm set 105 --boot order=sata0
+
+# 3. Optimizar el tipo de CPU para Ubuntu Desktop para aprovechar AES
+qm set 104 --cpu cputype=x86-64-v2-AES
+
+# 4. Limpiar el archivo .vmdk una vez terminada la importacion para liberar espacio
+rm /var/lib/vz/template/iso/TinyCore-disk1.vmdk
+\end{lstlisting}
+
+\section{Registro de Incidencias (Troubleshooting)}
+Durante el proceso me encontré con varios errores que tuve que ir solucionando poco a poco. Para hacerlo más fácil, he recopilado algunos de ellos en la siguiente tabla, junto a la solución que les di:
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.6}
+\begin{tabularx}{\textwidth}{|>{\columncolor{sidebg}\bfseries\color{textwhite}}p{3.5cm}|X|X|}
+\hline
+\rowcolor{sidebg} \color{proxmoxorange} Sistema / Error & \color{textwhite} Causa Técnica & \color{textwhite} Solución Aplicada \\ \hline
+Windows 10 & No encuentra discos al instalar. & Inyectar driver VirtIO SCSI desde la ISO secundaria. \\ \hline
+TinyCore & \texttt{mount failed: no such device} & Cambiar el hardware del disco de bus SCSI a \textbf{SATA 0}. \\ \hline
+SSH / SCP & \texttt{Permission denied} al conectar. & Editar \texttt{sshd\_config} para permitir \texttt{PermitRootLogin yes}. \\ \hline
+TinyCore & \texttt{waitforX failed} / Pantalla negra. & Ajustar resolución a 800x600 mediante comando \texttt{xsetup}. \\ \hline
+Ubuntu Desktop & Cursor con lag extremo. & Cambiar dispositivo de entrada a \textbf{Tablet USB}. \\ \hline
+Importación & \texttt{conf 102 not exist} & Crear la VM en la interfaz web (sin disco) antes de importar. \\ \hline
+\rowcolor{sidebg} \color{textwhite} General & \texttt{No space on device} & Borrar ISOs antiguas y archivos \texttt{.vmdk} ya importados. \\ \hline
+\end{tabularx}
+\caption{\color{textgray} Bitácora de errores críticos y resoluciones técnicas.}
+\end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \safeincludegraphics[width=0.9\textwidth]{qu.png}
+  \caption{\color{textgray} El error de ID 102 (qu.png): Una lección sobre el orden de los pasos en Proxmox.}
+\end{figure}
+
+\newpage
+
+% --- SECCIÓN 8: CONCLUSIONES ---
+\section{Lecciones Aprendidas del Administrador}
+Tras este laboratorio en \textbf{BeCall Group León}, me llevo tres aprendizajes que no están en los libros:
+\begin{enumerate}
+    \item \textbf{La paradoja del tamaño:} TinyCore (29MB) fue más compleja que Windows (12GB) por la falta de drivers nativos. Menos software significa que tú tienes que ser el driver.
+    \item \textbf{VirtIO es el estándar de oro:} Siempre que el sistema operativo lo soporte, VirtIO es obligatorio para que el rendimiento no se degrade.
+\end{enumerate}
+
+\section{Conclusiones Finales}
+Este ha sido de mis primeros retos en el mundo de la virtualización de servidores. Lejos de ser un manual perfecto, es el registro de cómo he pasado de la teoría de clase a "pegarme" con un servidor físico. 
+
+Me lo he pasado muy bien resolviendo los problemas de TinyCore y optimizando el Ubuntu Desktop. Ver cómo todas las máquinas corren ahora de forma fluida en el nodo Proxmox me da la confianza necesaria para seguir formándome y dejar de sentirme un "mindundi" para empezar a sentirme un técnico.
+
+\vspace{2cm}
+\begin{center}
+    {\color{textgray} \textit{"Quedo a su disposición para cualquier consejo o crítica constructiva que me permita seguir mejorando en mis futuros informes técnicos. Gracias y un saludo."}}
+\end{center}
+
+\end{document}
